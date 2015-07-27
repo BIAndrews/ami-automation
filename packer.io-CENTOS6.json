@@ -1,0 +1,39 @@
+{
+  "variables": {
+    "access_key": "AAdsfjrhjdHSJhss",
+    "secret_key": "WEFbhjsjgHGKDSGHSKhskhDFHdfhjj",
+    "cloudcfg_url": "https://raw.githubusercontent.com/BIAndrews/ami-automation/master/cloud.cfg",
+    "puppet_url": "https://puppet.example.tld:8140/packages/current/install.bash"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `access_key`}}",
+    "secret_key": "{{user `secret_key`}}",
+    "region": "us-west-2",
+    "source_ami": "ami-d45cd2e4",
+    "instance_type": "t1.micro",
+    "associate_public_ip_address": "true",
+    "ssh_username": "root",
+    "ami_name": "centos6-puppet {{timestamp}}"
+  }],
+  "provisioners": [{
+    "type": "shell",
+    "inline": [
+      "sleep 10",
+      "/etc/init.d/rsyslog stop",
+      "shred -fu /var/log/messages /var/log/secure /var/log/maillog /var/log/cron /var/log/spooler /var/log/boot.log /var/log/lastlog /var/log/dmesg* /var/log/dracut.log /var/log/audit/audit.log",
+      "curl -k {{user `puppet_url`}} | bash",
+      "service pe-puppet stop",
+      "sed -i '/^certname/d' /etc/puppetlabs/puppet/puppet.conf",
+      "yum -y install http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm",
+      "sed -i 's/mirrorlist=https/mirrorlist=http/' /etc/yum.repos.d/epel.repo",
+      "yum -y install vim nano cloud-init",
+      "wget --no-check-certificate -O /etc/cloud/cloud.cfg {{user `cloudcfg_url`}}",
+      "yum -y update",
+      "shred -fu /root/.bash_history /etc/ssh/ssh_host_* /tmp/pip-build-root /etc/puppetlabs/puppet/ssl/*",
+      "shred -fu /root/.ssh/authorized_keys",
+      "chkconfig getssh on",
+      "yum clean all"
+    ]
+  }]
+}

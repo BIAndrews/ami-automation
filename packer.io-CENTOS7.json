@@ -1,0 +1,40 @@
+{
+  "variables": {
+    "access_key": "AKFUSehjsGJSGS",
+    "secret_key": "SDGJSgjiosejaSGJHASGJAGAG",
+    "cloudcfg_url": "https://raw.githubusercontent.com/BIAndrews/ami-automation/master/cloud.cfg",
+    "puppet_url": "https://puppet.example.tld:8140/packages/current/install.bash"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `access_key`}}",
+    "secret_key": "{{user `secret_key`}}",
+    "region": "us-west-2",
+    "source_ami": "ami-c7d092f7",
+    "instance_type": "t2.micro",
+    "associate_public_ip_address": "true",
+    "ssh_username": "centos",
+    "ami_name": "centos7-puppet {{timestamp}}"
+  }],
+  "provisioners": [{
+    "type": "shell",
+    "inline": [
+      "sleep 10",
+      "sudo systemctl stop rsyslog",
+      "sudo shred -fu /var/log/messages /var/log/secure /var/log/maillog /var/log/cron /var/log/spooler /var/log/boot.log /var/log/lastlog /var/log/dmesg* /var/log/audit/audit.log",
+      "sudo curl -qk {{user `puppet_url`}} > /tmp/peinstall.sh",
+      "sudo /bin/bash /tmp/peinstall.sh",
+      "sudo systemctl stop pe-puppet",
+      "sudo sed -i '/^certname/d' /etc/puppetlabs/puppet/puppet.conf",
+      "sudo yum -y install https://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm",
+      "sudo mkdir -p /etc/cloud",
+      "sudo curl -qk {{user `cloudcfg_url`}} > /etc/cloud/cloud.cfg",
+      "sudo yum -y install vim nano cloud-init",
+      "sudo yum -y update",
+      "sudo shred -fu /tmp/peinstall.sh /etc/ssh/ssh_host_*",
+      "sudo shred -fu /root/.ssh/authorized_keys",
+      "shred -fu /tmp/script.sh",
+      "sudo yum clean all"
+    ]
+  }]
+}
